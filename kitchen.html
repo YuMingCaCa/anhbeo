@@ -26,8 +26,9 @@
             <i class="fas fa-volume-up"></i>
         </div>
         <h2 class="text-white text-2xl font-bold mb-4">Kích hoạt âm thanh thông báo</h2>
+        <p class="text-gray-300 text-center mb-6 max-w-sm">Do quy định của trình duyệt, bạn cần nhấn nút này mỗi khi tải trang để nhận thông báo bằng âm thanh.</p>
         <button id="enable-sound-btn" class="bg-blue-500 text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-blue-600 transition-colors">
-            Bật thông báo âm thanh
+            Bắt đầu làm việc
         </button>
     </div>
 
@@ -44,7 +45,6 @@
         </div>
     </div>
     
-    <!-- CẬP NHẬT ĐƯỜNG DẪN ÂM THANH LẦN 4 -->
     <audio id="notification-sound" src="Alarm.mp3" preload="auto"></audio>
 
     <div id="toast-notification" class="hidden fixed top-5 right-5 bg-blue-500 text-white py-3 px-5 rounded-lg shadow-lg z-50 flex items-center gap-3 toast-enter">
@@ -89,7 +89,12 @@
             }, 5000);
         };
 
-        const startOrderListener = () => {
+        const startApp = () => {
+            // Hide modal, show main content
+            soundModal.classList.add('hidden');
+            mainContainer.classList.remove('hidden');
+
+            // Start listening for orders
             const q = query(collection(db, "quan-anh-beo-orders"), where("status", "==", "new"));
             onSnapshot(q, (snapshot) => {
                 loadingMessage.style.display = snapshot.empty ? 'block' : 'none';
@@ -97,7 +102,7 @@
                     if (change.type === "added") {
                         const newOrder = { id: change.doc.id, ...change.doc.data() };
                         renderOrder(newOrder);
-                        notificationSound.play().catch(e => console.log("Lỗi phát âm thanh (có thể do tab không hoạt động):", e));
+                        notificationSound.play().catch(e => console.log("Lỗi phát âm thanh:", e));
                         showToast(`Có đơn hàng mới từ Bàn ${newOrder.table}!`);
                     }
                     if (change.type === "removed") {
@@ -109,19 +114,14 @@
         };
         
         enableSoundBtn.addEventListener('click', () => {
+             // Play a silent sound to unlock the audio context, as required by browsers
             notificationSound.play().then(() => {
                 notificationSound.pause();
                 notificationSound.currentTime = 0;
-                console.log("Âm thanh đã được kích hoạt.");
-                soundModal.classList.add('hidden');
-                mainContainer.classList.remove('hidden');
-                startOrderListener();
             }).catch(error => {
-                console.error("Không thể kích hoạt âm thanh:", error);
-                soundModal.classList.add('hidden');
-                mainContainer.classList.remove('hidden');
-                startOrderListener();
+                console.warn("Không thể phát âm thanh để kích hoạt, nhưng vẫn tiếp tục vì người dùng đã tương tác.", error);
             });
+            startApp();
         });
 
         const renderOrder = (order) => {

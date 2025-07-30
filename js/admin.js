@@ -24,7 +24,6 @@ const mainContainer = document.getElementById('main-container');
 const notificationSound = document.getElementById('notification-sound');
 const toastNotification = document.getElementById('toast-notification');
 const toastMessage = document.getElementById('toast-message');
-// ... other DOM elements
 let allProducts = [];
 
 // --- Utility Functions ---
@@ -43,7 +42,7 @@ const showToast = (message) => {
     }, 5000);
 };
 
-// --- Render Functions (Keep them as they are) ---
+// --- Render Functions ---
 const renderCategories = (categories) => {
     const categoryManagementList = document.getElementById('category-management-list');
     const productCategorySelect = document.getElementById('product-category-select');
@@ -100,12 +99,15 @@ const renderProducts = (products) => {
 };
 
 // --- Firebase Listeners ---
-const startAppListeners = () => {
+const startDataListeners = () => {
     onSnapshot(query(categoriesCollection), (snapshot) => renderCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))), console.error);
     onSnapshot(query(menuCollection), (snapshot) => {
         allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         renderProducts(allProducts);
     }, console.error);
+};
+
+const startNotificationListener = () => {
     onSnapshot(query(ordersCollection, where("status", "==", "new")), (snapshot) => {
         snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
@@ -117,24 +119,66 @@ const startAppListeners = () => {
     });
 };
 
-// --- Event Handlers ---
-enableSoundBtn.addEventListener('click', () => {
+// --- Event Handlers & Main Execution ---
+
+const unlockAudioAndStart = () => {
     notificationSound.play().then(() => {
         notificationSound.pause();
         notificationSound.currentTime = 0;
         console.log("Âm thanh đã được kích hoạt.");
-        soundModal.classList.add('hidden');
-        mainContainer.classList.remove('hidden');
-        startAppListeners();
+        startNotificationListener();
     }).catch(error => {
-        console.error("Không thể kích hoạt âm thanh:", error);
+        console.warn("Không thể phát âm thanh để kích hoạt, nhưng vẫn tiếp tục vì người dùng đã tương tác.", error);
+        startNotificationListener();
+    });
+
+    // Xóa banner và các event listener sau khi đã kích hoạt
+    const banner = document.getElementById('sound-unlock-banner');
+    if (banner) banner.remove();
+    document.removeEventListener('click', unlockAudioAndStart);
+    document.removeEventListener('keydown', unlockAudioAndStart);
+};
+
+// --- Main Application Logic ---
+function initializeApp() {
+    // Luôn bắt đầu bằng cách lắng nghe dữ liệu không cần âm thanh
+    startDataListeners();
+
+    // Kiểm tra xem người dùng đã từng cho phép chưa
+    if (localStorage.getItem('soundPermissionGranted') === 'true') {
+        // Nếu đã cho phép, ẩn modal và hiện nội dung chính
         soundModal.classList.add('hidden');
         mainContainer.classList.remove('hidden');
-        startAppListeners();
-    });
-});
 
-// Keep other event handlers for forms and buttons as they are
+        // Tạo một banner nhỏ để thông báo
+        const banner = document.createElement('div');
+        banner.id = 'sound-unlock-banner';
+        banner.className = 'bg-yellow-400 text-yellow-900 text-center p-2 font-medium sticky top-0 z-20';
+        banner.textContent = 'Âm thanh đang tắt. Nhấn vào bất cứ đâu để bật lại.';
+        document.body.prepend(banner);
+
+        // Chờ hành động đầu tiên của người dùng để kích hoạt âm thanh
+        document.addEventListener('click', unlockAudioAndStart, { once: true });
+        document.addEventListener('keydown', unlockAudioAndStart, { once: true });
+
+    } else {
+        // Nếu là lần đầu tiên, hiển thị modal yêu cầu
+        mainContainer.classList.add('hidden');
+        soundModal.classList.remove('hidden');
+        
+        enableSoundBtn.addEventListener('click', () => {
+            localStorage.setItem('soundPermissionGranted', 'true'); // Lưu lựa chọn vĩnh viễn
+            soundModal.classList.add('hidden');
+            mainContainer.classList.remove('hidden');
+            unlockAudioAndStart();
+        });
+    }
+}
+
+initializeApp();
+
+
+// --- Các Event Handler khác cho form (giữ nguyên) ---
 const addCategoryForm = document.getElementById('add-category-form');
 addCategoryForm.addEventListener('submit', async (e) => {
     e.preventDefault();
