@@ -1,0 +1,63 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Mật khẩu mặc định ---
+    // Bạn có thể thay đổi mật khẩu ở đây
+    const LOGIN_CREDENTIALS = {
+        admin: 'admin123',
+        kitchen: 'kitchen123'
+    };
+    // -------------------------
+
+    const loginTriggerBtn = document.getElementById('login-trigger-btn');
+    const loginModal = document.getElementById('login-modal');
+    const closeLoginModalBtn = document.getElementById('close-login-modal-btn');
+    const loginForm = document.getElementById('login-form');
+    const errorMessage = document.getElementById('error-message');
+    const roleInputEl = document.getElementById('role');
+    const passwordInputEl = document.getElementById('password');
+
+    // Hiển thị cửa sổ đăng nhập khi nhấn nút
+    loginTriggerBtn.addEventListener('click', () => {
+        loginModal.classList.remove('hidden');
+        roleInputEl.focus();
+    });
+
+    // Hàm để ẩn cửa sổ đăng nhập
+    const hideModal = () => {
+        loginModal.classList.add('hidden');
+        errorMessage.textContent = ''; // Xóa thông báo lỗi khi đóng
+        loginForm.reset(); // Xóa dữ liệu đã nhập trong form
+    };
+
+    // Gán sự kiện cho nút đóng và nền mờ
+    closeLoginModalBtn.addEventListener('click', hideModal);
+    loginModal.addEventListener('click', (e) => {
+        // Chỉ đóng khi nhấn vào vùng nền mờ bên ngoài
+        if (e.target === loginModal) {
+            hideModal();
+        }
+    });
+
+    // Xử lý logic khi gửi form đăng nhập
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault(); // Ngăn form reload lại trang
+        const roleInput = roleInputEl.value.trim().toLowerCase();
+        const passwordInput = passwordInputEl.value;
+
+        errorMessage.textContent = ''; // Xóa lỗi cũ
+
+        // Kiểm tra tên đăng nhập và mật khẩu
+        if (LOGIN_CREDENTIALS.hasOwnProperty(roleInput)) {
+            if (passwordInput === LOGIN_CREDENTIALS[roleInput]) {
+                // Nếu đúng, chuyển hướng đến trang tương ứng
+                const targetPage = roleInput === 'admin' ? 'admin.html' : 'kitchen.html';
+                window.location.href = targetPage;
+            } else {
+                // Sai mật khẩu
+                errorMessage.textContent = 'Mật khẩu không chính xác.';
+            }
+        } else {
+            // Sai tên đăng nhập
+            errorMessage.textContent = 'Tên đăng nhập không tồn tại.';
+        }
+    });
+});
