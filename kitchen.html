@@ -26,7 +26,7 @@
             <i class="fas fa-volume-up"></i>
         </div>
         <h2 class="text-white text-2xl font-bold mb-4">Kích hoạt âm thanh thông báo</h2>
-        <p class="text-gray-300 text-center mb-6 max-w-sm">Do quy định của trình duyệt, bạn cần nhấn nút này mỗi khi tải trang để nhận thông báo bằng âm thanh.</p>
+        <p class="text-gray-300 text-center mb-6 max-w-sm">Do quy định của trình duyệt, bạn cần nhấn nút này mỗi khi tải trang để nhận thông báo bằng âm thanh và giọng nói.</p>
         <button id="enable-sound-btn" class="bg-blue-500 text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-blue-600 transition-colors">
             Bắt đầu làm việc
         </button>
@@ -53,6 +53,7 @@
     </div>
 
     <script type="module">
+        // filepath: d:\1 HE THONG WEB\goiMonQR\kitchen.html
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getFirestore, collection, onSnapshot, query, where, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
@@ -76,7 +77,7 @@
         const loadingMessage = document.getElementById('loading-message');
         const toastNotification = document.getElementById('toast-notification');
         const toastMessage = document.getElementById('toast-message');
-        
+
         const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 
         const showToast = (message) => {
@@ -89,12 +90,70 @@
             }, 5000);
         };
 
+        // --- Text-to-Speech Functionality ---
+        let vietnameseVoice = null;
+        const speechQueue = [];
+        let isSpeechInitialized = false;
+        let isCurrentlySpeaking = false;
+
+        function findAndSetVoice() {
+            if (!('speechSynthesis' in window)) return false;
+            const voices = window.speechSynthesis.getVoices();
+            vietnameseVoice = voices.find(v => v.lang === 'vi-VN') || voices.find(v => v.lang.startsWith('vi'));
+            if (vietnameseVoice) {
+                isSpeechInitialized = true;
+                processSpeechQueue();
+                return true;
+            }
+            return false;
+        }
+
+        function initializeSpeech() {
+            if (!('speechSynthesis' in window)) {
+                console.error("Trình duyệt này không hỗ trợ giọng nói.");
+                return;
+            }
+            // Luôn lắng nghe sự kiện voiceschanged
+            window.speechSynthesis.onvoiceschanged = () => {
+                findAndSetVoice();
+            };
+            // Thử lấy voice ngay lập tức
+            findAndSetVoice();
+        }
+
+        function processSpeechQueue() {
+            if (!isSpeechInitialized || isCurrentlySpeaking || speechQueue.length === 0) return;
+            isCurrentlySpeaking = true;
+            const textToSpeak = speechQueue.shift();
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.voice = vietnameseVoice;
+            utterance.lang = 'vi-VN';
+            utterance.rate = 0.95;
+            utterance.onend = () => {
+                isCurrentlySpeaking = false;
+                setTimeout(processSpeechQueue, 100);
+            };
+            utterance.onerror = (event) => {
+                console.error("Lỗi khi phát giọng nói:", event.error);
+                isCurrentlySpeaking = false;
+                processSpeechQueue();
+            };
+            window.speechSynthesis.speak(utterance);
+        }
+
+        const speak = (text) => {
+            speechQueue.push(text);
+            processSpeechQueue();
+        };
+        // --- END Text-to-Speech ---
+
         const startApp = () => {
-            // Hide modal, show main content
             soundModal.classList.add('hidden');
             mainContainer.classList.remove('hidden');
 
-            // Start listening for orders
+            // Đảm bảo không bị lặp sự kiện khi có nhiều đơn mới liên tiếp
+            let soundBusy = false;
+
             const q = query(collection(db, "quan-anh-beo-orders"), where("status", "==", "new"));
             onSnapshot(q, (snapshot) => {
                 loadingMessage.style.display = snapshot.empty ? 'block' : 'none';
@@ -102,7 +161,25 @@
                     if (change.type === "added") {
                         const newOrder = { id: change.doc.id, ...change.doc.data() };
                         renderOrder(newOrder);
-                        notificationSound.play().catch(e => console.log("Lỗi phát âm thanh:", e));
+
+                        // Phát âm thanh cảnh báo, sau đó mới đọc giọng nói
+                        const itemsText = newOrder.items.map(item => `${item.quantity} ${item.name}`).join(', ');
+                        const announcementText = `Có đơn mới từ Bàn ${newOrder.table}. Gồm có: ${itemsText}`;
+
+                        // Nếu đang phát âm thanh cảnh báo thì bỏ qua, tránh lặp
+                        if (!soundBusy) {
+                            soundBusy = true;
+                            notificationSound.currentTime = 0;
+                            notificationSound.play().catch(e => console.log("Lỗi phát âm thanh:", e));
+                            notificationSound.onended = () => {
+                                speak(announcementText);
+                                soundBusy = false;
+                            };
+                        } else {
+                            // Nếu đang bận, vẫn xếp thông báo vào hàng đợi giọng nói
+                            setTimeout(() => speak(announcementText), 1000);
+                        }
+
                         showToast(`Có đơn hàng mới từ Bàn ${newOrder.table}!`);
                     }
                     if (change.type === "removed") {
@@ -112,9 +189,9 @@
                 });
             });
         };
-        
+
         enableSoundBtn.addEventListener('click', () => {
-             // Play a silent sound to unlock the audio context, as required by browsers
+            initializeSpeech();
             notificationSound.play().then(() => {
                 notificationSound.pause();
                 notificationSound.currentTime = 0;

@@ -26,6 +26,62 @@ const toastNotification = document.getElementById('toast-notification');
 const toastMessage = document.getElementById('toast-message');
 let allProducts = [];
 
+// --- NEW: Text-to-Speech Functionality (Robust Version) ---
+let vietnameseVoice = null;
+let speechPromise = null;
+
+function initializeSpeech() {
+    if (speechPromise) return speechPromise;
+
+    speechPromise = new Promise((resolve, reject) => {
+        if (!('speechSynthesis' in window)) {
+            return reject("Trình duyệt không hỗ trợ giọng nói.");
+        }
+
+        let voices = window.speechSynthesis.getVoices();
+
+        function findVoice() {
+            voices = window.speechSynthesis.getVoices();
+            vietnameseVoice = voices.find(v => v.lang === 'vi-VN') || voices.find(v => v.lang.startsWith('vi'));
+            if (vietnameseVoice) {
+                console.log("Đã tìm thấy giọng đọc tiếng Việt:", vietnameseVoice.name);
+                resolve();
+                return true;
+            }
+            return false;
+        }
+
+        if (findVoice()) return;
+
+        window.speechSynthesis.onvoiceschanged = () => {
+            findVoice();
+        };
+    });
+    return speechPromise;
+}
+
+const speak = async (text) => {
+    try {
+        await initializeSpeech();
+        if (!vietnameseVoice) {
+            console.warn("Không có giọng đọc tiếng Việt. Không thể phát thông báo.");
+            return;
+        }
+        
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = vietnameseVoice;
+        utterance.lang = 'vi-VN';
+        utterance.rate = 0.95;
+        window.speechSynthesis.speak(utterance);
+
+    } catch (error) {
+        console.error("Lỗi khi phát giọng nói:", error);
+    }
+};
+// --- END NEW ---
+
+
 // --- Utility Functions ---
 const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
 const normalizeCategory = (str) => {
@@ -112,7 +168,15 @@ const startNotificationListener = () => {
         snapshot.docChanges().forEach((change) => {
             if (change.type === "added") {
                 const newOrder = change.doc.data();
+                
+                // Play sound
                 notificationSound.play().catch(e => console.log("Lỗi phát âm thanh:", e));
+
+                // Create and speak the announcement
+                const itemsText = newOrder.items.map(item => `${item.quantity} ${item.name}`).join(', ');
+                const announcementText = `Có đơn mới từ Bàn ${newOrder.table}. Gồm có: ${itemsText}`;
+                speak(announcementText);
+
                 showToast(`Có đơn hàng mới từ Bàn ${newOrder.table}!`);
             }
         });
@@ -122,17 +186,22 @@ const startNotificationListener = () => {
 // --- Event Handlers & Main Execution ---
 
 const unlockAudioAndStart = () => {
+    // Initialize speech on the first user interaction
+    initializeSpeech();
+
+    // Play a silent sound to unlock the audio context
     notificationSound.play().then(() => {
         notificationSound.pause();
         notificationSound.currentTime = 0;
         console.log("Âm thanh đã được kích hoạt.");
-        startNotificationListener();
     }).catch(error => {
         console.warn("Không thể phát âm thanh để kích hoạt, nhưng vẫn tiếp tục vì người dùng đã tương tác.", error);
-        startNotificationListener();
     });
 
-    // Xóa banner và các event listener sau khi đã kích hoạt
+    // Start the notification listener
+    startNotificationListener();
+
+    // Remove the banner and event listeners after activation
     const banner = document.getElementById('sound-unlock-banner');
     if (banner) banner.remove();
     document.removeEventListener('click', unlockAudioAndStart);
@@ -141,33 +210,32 @@ const unlockAudioAndStart = () => {
 
 // --- Main Application Logic ---
 function initializeApp() {
-    // Luôn bắt đầu bằng cách lắng nghe dữ liệu không cần âm thanh
+    // Always start by listening to data that doesn't require sound
     startDataListeners();
 
-    // Kiểm tra xem người dùng đã từng cho phép chưa
+    // Check if the user has previously granted permission
     if (localStorage.getItem('soundPermissionGranted') === 'true') {
-        // Nếu đã cho phép, ẩn modal và hiện nội dung chính
         soundModal.classList.add('hidden');
         mainContainer.classList.remove('hidden');
 
-        // Tạo một banner nhỏ để thông báo
+        // Create a small banner to notify the user
         const banner = document.createElement('div');
         banner.id = 'sound-unlock-banner';
         banner.className = 'bg-yellow-400 text-yellow-900 text-center p-2 font-medium sticky top-0 z-20';
         banner.textContent = 'Âm thanh đang tắt. Nhấn vào bất cứ đâu để bật lại.';
         document.body.prepend(banner);
 
-        // Chờ hành động đầu tiên của người dùng để kích hoạt âm thanh
+        // Wait for the first user interaction to enable sound
         document.addEventListener('click', unlockAudioAndStart, { once: true });
         document.addEventListener('keydown', unlockAudioAndStart, { once: true });
 
     } else {
-        // Nếu là lần đầu tiên, hiển thị modal yêu cầu
+        // If it's the first time, show the request modal
         mainContainer.classList.add('hidden');
         soundModal.classList.remove('hidden');
         
         enableSoundBtn.addEventListener('click', () => {
-            localStorage.setItem('soundPermissionGranted', 'true'); // Lưu lựa chọn vĩnh viễn
+            localStorage.setItem('soundPermissionGranted', 'true'); // Save the choice permanently
             soundModal.classList.add('hidden');
             mainContainer.classList.remove('hidden');
             unlockAudioAndStart();
@@ -178,7 +246,7 @@ function initializeApp() {
 initializeApp();
 
 
-// --- Các Event Handler khác cho form (giữ nguyên) ---
+// --- Other form event handlers (unchanged) ---
 const addCategoryForm = document.getElementById('add-category-form');
 addCategoryForm.addEventListener('submit', async (e) => {
     e.preventDefault();

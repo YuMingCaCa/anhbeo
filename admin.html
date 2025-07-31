@@ -27,16 +27,13 @@
             <header class="text-center mb-8 relative">
                 <h1 class="text-4xl font-bold text-gray-800">Quản Lý Thực Đơn</h1>
                 <p class="text-gray-600 mt-2">Dành cho chủ quán "Anh Béo"</p>
-                <!-- Nút tạo mã QR -->
                 <a href="generate_qr.html" target="_blank" class="absolute top-0 right-0 bg-teal-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-teal-600 transition-colors flex items-center gap-2 shadow-md">
                     <i class="fas fa-qrcode"></i>
                     <span>Tạo mã QR</span>
                 </a>
             </header>
 
-            <!-- Bố cục 2 cột cho Form và Quản lý Phân loại -->
             <div class="grid md:grid-cols-2 gap-8 mb-8">
-                <!-- Form để thêm/sửa món ăn -->
                 <div class="bg-white p-6 rounded-xl shadow-lg">
                     <h2 class="text-2xl font-bold mb-4" id="form-title">Thêm Món Ăn Mới</h2>
                     <form id="product-form" class="space-y-4">
@@ -63,7 +60,6 @@
                         </div>
                     </form>
                 </div>
-                <!-- Quản lý Phân Loại -->
                 <div class="bg-white p-6 rounded-xl shadow-lg">
                     <h2 class="text-2xl font-bold mb-4">Quản Lý Phân Loại</h2>
                     <form id="add-category-form" class="flex gap-2 mb-4">
@@ -76,7 +72,6 @@
                 </div>
             </div>
             
-            <!-- Danh sách món ăn -->
             <div>
                 <h2 class="text-2xl font-bold mb-4">Danh Sách Món Ăn Hiện Tại</h2>
                 <div id="product-list" class="space-y-6">
@@ -96,7 +91,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
-        // ... (Toàn bộ mã JavaScript giữ nguyên như cũ, không thay đổi)
         const firebaseConfig = {
             apiKey: "AIzaSyDosCykP-rrTVAlwfAOXDGgGioxtt-VrOs",
             authDomain: "quanlykinhdoanh-cb2b1.firebaseapp.com",
@@ -113,7 +107,6 @@
         const categoriesCollection = collection(db, "quan-anh-beo-categories");
         const ordersCollection = collection(db, "quan-anh-beo-orders");
 
-        // --- DOM Elements ---
         const soundModal = document.getElementById('sound-modal');
         const enableSoundBtn = document.getElementById('enable-sound-btn');
         const mainContainer = document.getElementById('main-container');
@@ -128,7 +121,84 @@
 
         let allProducts = [];
 
-        // --- Utility Functions ---
+        // ==================================================================
+        // === BỘ MÁY GIỌNG NÓI TIẾNG VIỆT (VIETNAMESE VOICE ENGINE) V3.0 ===
+        // ==================================================================
+        const voiceEngine = (() => {
+            let vietnameseVoice = null;
+            const speechQueue = [];
+            let isEngineInitialized = false;
+            let isCurrentlySpeaking = false;
+            let initializationInterval = null;
+
+            function processQueue() {
+                if (!isEngineInitialized || isCurrentlySpeaking || speechQueue.length === 0) {
+                    return;
+                }
+                isCurrentlySpeaking = true;
+                const text = speechQueue.shift();
+                console.log(`[Voice Engine] Đang đọc: "${text}"`);
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = vietnameseVoice;
+                utterance.lang = 'vi-VN';
+                utterance.rate = 1.0;
+                utterance.onend = () => {
+                    isCurrentlySpeaking = false;
+                    setTimeout(processQueue, 100);
+                };
+                utterance.onerror = (e) => {
+                    console.error("[Voice Engine] Lỗi khi phát giọng nói:", e.error);
+                    isCurrentlySpeaking = false;
+                    processQueue();
+                };
+                window.speechSynthesis.speak(utterance);
+            }
+
+            function initialize() {
+                if (isEngineInitialized || initializationInterval) return;
+                console.log("[Voice Engine] Đang khởi tạo...");
+                if (!('speechSynthesis' in window)) {
+                    console.error("[Voice Engine] Lỗi: Trình duyệt này không hỗ trợ giọng nói.");
+                    return;
+                }
+                
+                let attemptCount = 0;
+                initializationInterval = setInterval(() => {
+                    attemptCount++;
+                    const voices = window.speechSynthesis.getVoices();
+                    if (voices.length > 0) {
+                        vietnameseVoice = voices.find(v => v.lang === 'vi-VN') || voices.find(v => v.lang.startsWith('vi'));
+                        if (vietnameseVoice) {
+                            console.log(`[Voice Engine] THÀNH CÔNG: Đã tìm thấy giọng đọc Tiếng Việt sau ${attemptCount} lần thử:`, vietnameseVoice.name);
+                            isEngineInitialized = true;
+                            clearInterval(initializationInterval);
+                            initializationInterval = null;
+                            processQueue();
+                            return;
+                        }
+                    }
+                    if (attemptCount > 50) { // Dừng sau 5 giây
+                        clearInterval(initializationInterval);
+                        initializationInterval = null;
+                        console.error("[Voice Engine] LỖI: Không tìm thấy giọng đọc Tiếng Việt sau 5 giây. Vui lòng kiểm tra cài đặt của trình duyệt/hệ điều hành.");
+                    }
+                }, 100);
+            }
+
+            function speak(text) {
+                if (!text) return;
+                console.log(`[Voice Engine] Đã thêm vào hàng đợi: "${text}"`);
+                speechQueue.push(text);
+                processQueue();
+            }
+
+            return { initialize, speak };
+        })();
+        // ==================================================================
+        // === KẾT THÚC BỘ MÁY GIỌNG NÓI =====================================
+        // ==================================================================
+
+
         const formatCurrency = (amount) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
         const normalizeCategory = (str) => {
             if (!str) return '';
@@ -144,9 +214,7 @@
             }, 5000);
         };
 
-        // --- Render Functions ---
         const renderCategories = (categories) => {
-            const productCategorySelect = document.getElementById('product-category-select');
             categoryManagementList.innerHTML = '';
             if (categories.length === 0) {
                 categoryManagementList.innerHTML = '<p class="text-center text-gray-500">Chưa có phân loại nào.</p>';
@@ -158,6 +226,7 @@
                     categoryManagementList.appendChild(catEl);
                 });
             }
+            const productCategorySelect = document.getElementById('product-category-select');
             productCategorySelect.innerHTML = '<option value="">-- Chọn loại món ăn --</option>';
             categories.forEach(cat => {
                 const option = document.createElement('option');
@@ -167,14 +236,13 @@
             });
         };
         const renderProducts = (products) => {
-            const loadingMessage = document.getElementById('loading-products');
             productListDiv.innerHTML = '';
             if (products.length === 0) {
-                loadingMessage.textContent = 'Chưa có món ăn nào. Vui lòng thêm ở trên.';
-                loadingMessage.style.display = 'block';
+                document.getElementById('loading-products').textContent = 'Chưa có món ăn nào. Vui lòng thêm ở trên.';
+                document.getElementById('loading-products').style.display = 'block';
                 return;
             }
-            loadingMessage.style.display = 'none';
+            document.getElementById('loading-products').style.display = 'none';
             const groupedProducts = products.reduce((acc, product) => {
                 const category = product.category || 'Chưa phân loại';
                 if (!acc[category]) acc[category] = [];
@@ -198,41 +266,44 @@
             });
         };
 
-        // --- Main Application Logic ---
-        const startApp = () => {
-            // Hide modal, show main content
-            soundModal.classList.add('hidden');
-            mainContainer.classList.remove('hidden');
-
-            // Start all Firebase listeners
+        const startDataListeners = () => {
             onSnapshot(query(categoriesCollection), (snapshot) => renderCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))), console.error);
             onSnapshot(query(menuCollection), (snapshot) => {
                 allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderProducts(allProducts);
             }, console.error);
+        };
+
+        const startNotificationListener = () => {
             onSnapshot(query(ordersCollection, where("status", "==", "new")), (snapshot) => {
                 snapshot.docChanges().forEach((change) => {
                     if (change.type === "added") {
                         const newOrder = change.doc.data();
                         notificationSound.play().catch(e => console.log("Lỗi phát âm thanh:", e));
+                        const itemsText = newOrder.items.map(item => `${item.quantity} ${item.name}`).join(', ');
+                        const announcementText = `Có đơn mới từ Bàn ${newOrder.table}. Gồm có: ${itemsText}`;
+                        voiceEngine.speak(announcementText); // Sử dụng bộ máy giọng nói
                         showToast(`Có đơn hàng mới từ Bàn ${newOrder.table}!`);
                     }
                 });
             });
         };
-        
-        enableSoundBtn.addEventListener('click', () => {
-             // Play a silent sound to unlock the audio context
+
+        const unlockAudioAndStart = () => {
+            voiceEngine.initialize(); // Khởi tạo bộ máy giọng nói
             notificationSound.play().then(() => {
                 notificationSound.pause();
                 notificationSound.currentTime = 0;
-            }).catch(error => {
-                console.warn("Không thể phát âm thanh để kích hoạt, nhưng vẫn tiếp tục vì người dùng đã tương tác.", error);
-            });
-            startApp();
-        });
+            }).catch(error => {});
+            startDataListeners();
+            startNotificationListener();
+            mainContainer.classList.remove('hidden');
+            soundModal.classList.add('hidden');
+        };
 
-        // --- Other Event Handlers ---
+        enableSoundBtn.addEventListener('click', unlockAudioAndStart);
+
+        // Các event handler khác giữ nguyên
         addCategoryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newCategoryNameInput = document.getElementById('new-category-name');
@@ -244,13 +315,8 @@
                 alert('Phân loại này đã tồn tại!');
                 return;
             }
-            try {
-                await addDoc(categoriesCollection, { name: categoryName });
-                addCategoryForm.reset();
-            } catch (error) {
-                console.error("Lỗi khi thêm phân loại: ", error);
-                alert("Không thể thêm phân loại mới.");
-            }
+            await addDoc(categoriesCollection, { name: categoryName });
+            addCategoryForm.reset();
         });
 
         categoryManagementList.addEventListener('click', async (e) => {
@@ -258,95 +324,68 @@
             if (!target) return;
             const categoryId = target.dataset.id;
             const categoryName = target.dataset.name;
-            const isCategoryInUse = allProducts.some(p => p.category === categoryName);
-            if (isCategoryInUse) {
-                alert(`Không thể xóa! Phân loại "${categoryName}" đang được sử dụng cho một hoặc nhiều món ăn.`);
+            if (allProducts.some(p => p.category === categoryName)) {
+                alert(`Không thể xóa! Phân loại "${categoryName}" đang được sử dụng.`);
                 return;
             }
             if (confirm(`Bạn có chắc muốn xóa phân loại "${categoryName}"?`)) {
-                try {
-                    await deleteDoc(doc(db, "quan-anh-beo-categories", categoryId));
-                } catch (error) {
-                    console.error("Lỗi khi xóa phân loại: ", error);
-                    alert("Không thể xóa phân loại.");
-                }
+                await deleteDoc(doc(db, "quan-anh-beo-categories", categoryId));
             }
         });
 
         const resetProductForm = () => {
-            const productIdInput = document.getElementById('product-id');
-            const formTitle = document.getElementById('form-title');
-            const saveBtnText = document.getElementById('save-btn-text');
-            const productNameInput = document.getElementById('product-name');
             productForm.reset();
-            productIdInput.value = '';
-            formTitle.textContent = 'Thêm Món Ăn Mới';
-            saveBtnText.textContent = 'Lưu Món';
+            document.getElementById('product-id').value = '';
+            document.getElementById('form-title').textContent = 'Thêm Món Ăn Mới';
+            document.getElementById('save-btn-text').textContent = 'Lưu Món';
             cancelEditBtn.classList.add('hidden');
-            productNameInput.focus();
+            document.getElementById('product-name').focus();
         };
 
         productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const productIdInput = document.getElementById('product-id');
-            const productNameInput = document.getElementById('product-name');
-            const productPriceInput = document.getElementById('product-price');
-            const productCategorySelect = document.getElementById('product-category-select');
-            const id = productIdInput.value;
+            const id = document.getElementById('product-id').value;
             const productData = {
-                name: productNameInput.value,
-                price: Number(productPriceInput.value),
-                category: productCategorySelect.value
+                name: document.getElementById('product-name').value,
+                price: Number(document.getElementById('product-price').value),
+                category: document.getElementById('product-category-select').value
             };
             if (!productData.category) {
                 alert("Vui lòng chọn phân loại cho món ăn!");
                 return;
             }
-            try {
-                if (id) {
-                    await updateDoc(doc(db, "quan-anh-beo-menu", id), productData);
-                } else {
-                    await addDoc(menuCollection, productData);
-                }
-                resetProductForm();
-            } catch (error) {
-                console.error("Lỗi khi lưu món ăn: ", error);
-                alert("Đã có lỗi xảy ra, không thể lưu món ăn!");
+            if (id) {
+                await updateDoc(doc(db, "quan-anh-beo-menu", id), productData);
+            } else {
+                await addDoc(menuCollection, productData);
             }
+            resetProductForm();
         });
 
         productListDiv.addEventListener('click', async (e) => {
             const target = e.target.closest('button');
             if (!target) return;
             const id = target.dataset.id;
-            const productDocRef = doc(db, "quan-anh-beo-menu", id);
             if (target.classList.contains('delete-btn')) {
                 if (confirm('Bạn có chắc muốn xóa món ăn này?')) {
-                    await deleteDoc(productDocRef).catch(console.error);
+                    await deleteDoc(doc(db, "quan-anh-beo-menu", id));
                 }
             } else if (target.classList.contains('edit-btn')) {
                 const docSnap = await getDocs(query(menuCollection, where('__name__', '==', id)));
                 if (!docSnap.empty) {
                     const product = docSnap.docs[0].data();
-                    const productIdInput = document.getElementById('product-id');
-                    const productNameInput = document.getElementById('product-name');
-                    const productPriceInput = document.getElementById('product-price');
-                    const productCategorySelect = document.getElementById('product-category-select');
-                    const formTitle = document.getElementById('form-title');
-                    const saveBtnText = document.getElementById('save-btn-text');
-                    productIdInput.value = id;
-                    productNameInput.value = product.name;
-                    productPriceInput.value = product.price;
-                    productCategorySelect.value = product.category;
-                    formTitle.textContent = 'Chỉnh Sửa Món Ăn';
-                    saveBtnText.textContent = 'Cập Nhật';
+                    document.getElementById('product-id').value = id;
+                    document.getElementById('product-name').value = product.name;
+                    document.getElementById('product-price').value = product.price;
+                    document.getElementById('product-category-select').value = product.category;
+                    document.getElementById('form-title').textContent = 'Chỉnh Sửa Món Ăn';
+                    document.getElementById('save-btn-text').textContent = 'Cập Nhật';
                     cancelEditBtn.classList.remove('hidden');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
-                    productNameInput.focus();
+                    document.getElementById('product-name').focus();
                 }
             }
         });
-
         cancelEditBtn.addEventListener('click', resetProductForm);
     </script>
 </body>
