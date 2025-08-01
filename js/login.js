@@ -1,9 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- Mật khẩu mặc định ---
-    // Bạn có thể thay đổi mật khẩu ở đây
+    // Chỉ còn một tài khoản duy nhất để vào trang Dashboard
     const LOGIN_CREDENTIALS = {
-        admin: 'admin123',
-        kitchen: 'kitchen123'
+        quanly: '123456' // Bạn có thể thay đổi tên đăng nhập và mật khẩu ở đây
     };
     // -------------------------
 
@@ -45,19 +44,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         errorMessage.textContent = ''; // Xóa lỗi cũ
 
-        // Kiểm tra tên đăng nhập và mật khẩu
+        // Kiểm tra xem tên đăng nhập có tồn tại không
         if (LOGIN_CREDENTIALS.hasOwnProperty(roleInput)) {
+            // Kiểm tra mật khẩu
             if (passwordInput === LOGIN_CREDENTIALS[roleInput]) {
-                // Nếu đúng, chuyển hướng đến trang tương ứng
-                const targetPage = roleInput === 'admin' ? 'admin.html' : 'kitchen.html';
-                window.location.href = targetPage;
+                // Nếu đúng, chuyển hướng đến trang dashboard
+                // Lưu trạng thái đã đăng nhập vào sessionStorage
+                sessionStorage.setItem('isLoggedIn', 'true');
+                window.location.href = './dashboard/'; // Chuyển hướng đến thư mục dashboard một cách rõ ràng hơn
             } else {
                 // Sai mật khẩu
                 errorMessage.textContent = 'Mật khẩu không chính xác.';
             }
         } else {
             // Sai tên đăng nhập
-            errorMessage.textContent = 'Tên đăng nhập không tồn tại.';
+            errorMessage.textContent = 'Tên đăng nhập không chính xác.';
         }
     });
 });

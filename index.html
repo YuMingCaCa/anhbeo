@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thực Đơn - Quán Anh Béo</title>
     
+    <!-- Thêm dòng này để chỉ định icon cho tab trình duyệt -->
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
     <!-- External CSS -->
     <link rel="stylesheet" href="css/style.css">
 
@@ -37,7 +39,7 @@
             <form id="login-form" class="space-y-4">
                 <div>
                     <label for="role" class="block text-sm font-medium text-gray-700">Tên đăng nhập</label>
-                    <input type="text" id="role" name="role" required placeholder="Nhập 'admin' hoặc 'kitchen'" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm">
+                    <input type="text" id="role" name="role" required placeholder="Nhập tên đăng nhập" class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm">
                 </div>
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700">Mật khẩu</label>
@@ -72,15 +74,21 @@
 
     <!-- Fixed Bottom Bar for Ordering -->
     <div class="fixed bottom-0 left-0 w-full bg-white border-t-2 border-gray-200 shadow-lg z-10">
-        <div class="container mx-auto max-w-2xl p-4 flex justify-between items-center">
-            <div>
-                <span class="text-gray-600">Tổng cộng:</span>
-                <p id="total-price" class="text-2xl font-bold text-blue-600">0đ</p>
+        <div class="container mx-auto max-w-2xl p-4">
+            <div class="mb-3">
+                <label for="order-notes" class="block text-sm font-medium text-gray-700">Ghi chú cho nhà bếp</label>
+                <textarea id="order-notes" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ví dụ: không cay, thêm ít đá..."></textarea>
             </div>
-            <button id="place-order-btn" class="bg-green-500 text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-green-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
-                <i class="fas fa-paper-plane"></i>
-                <span>Đặt Món</span>
-            </button>
+            <div class="flex justify-between items-center">
+                <div>
+                    <span class="text-gray-600">Tổng cộng:</span>
+                    <p id="total-price" class="text-2xl font-bold text-blue-600">0đ</p>
+                </div>
+                <button id="place-order-btn" class="bg-green-500 text-white px-8 py-3 rounded-lg font-bold text-lg hover:bg-green-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i class="fas fa-paper-plane"></i>
+                    <span>Đặt Món</span>
+                </button>
+            </div>
         </div>
     </div>
 
