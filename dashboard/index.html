@@ -260,7 +260,7 @@
             const id = target.dataset.id;
             target.disabled = true;
             target.textContent = 'Đang xử lý...';
-            await updateDoc(doc(db, "quan-anh-beo-orders", id), { status: "completed" });
+            await updateDoc(doc(db, `${restaurantId}-orders`, id), { status: "completed" });
         });
 
         // =================================================
@@ -367,7 +367,7 @@
                 return;
             }
             if (confirm(`Bạn có chắc muốn xóa phân loại "${categoryName}"?`)) {
-                await deleteDoc(doc(db, "quan-anh-beo-categories", categoryId));
+                await deleteDoc(doc(db, `${restaurantId}-categories`, categoryId));
             }
         });
 
@@ -386,7 +386,7 @@
                 return;
             }
             if (id) {
-                await updateDoc(doc(db, "quan-anh-beo-menu", id), productData);
+                await updateDoc(doc(db, `${restaurantId}-menu`, id), productData);
             } else {
                 await addDoc(menuCollection, productData);
             }
@@ -399,7 +399,7 @@
             const id = target.dataset.id;
             if (target.classList.contains('delete-btn')) {
                 if (confirm('Bạn có chắc muốn xóa món ăn này?')) {
-                    await deleteDoc(doc(db, "quan-anh-beo-menu", id));
+                    await deleteDoc(doc(db, `${restaurantId}-menu`, id));
                 }
             } else if (target.classList.contains('edit-btn')) {
                 const product = allProducts.find(p => p.id === id);
