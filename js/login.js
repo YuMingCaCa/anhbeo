@@ -2,7 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Mật khẩu mặc định ---
     // Chỉ còn một tài khoản duy nhất để vào trang Dashboard
     const LOGIN_CREDENTIALS = {
-        quanly: '123456' // Bạn có thể thay đổi tên đăng nhập và mật khẩu ở đây
+        // Ví dụ cho quán mới: 'phogia' : 'matkhau456'
+        quanly: '123456' // <-- THAY TÊN ĐĂNG NHẬP VÀ MẬT KHẨU CHO QUÁN MỚI
     };
     // -------------------------
 

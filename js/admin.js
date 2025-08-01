@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+import { restaurantId } from './config.js'; // <-- THÊM DÒNG NÀY
 
 const firebaseConfig = {
     apiKey: "AIzaSyDosCykP-rrTVAlwfAOXDGgGioxtt-VrOs",
@@ -13,9 +14,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const menuCollection = collection(db, "quan-anh-beo-menu");
-const categoriesCollection = collection(db, "quan-anh-beo-categories");
-const ordersCollection = collection(db, "quan-anh-beo-orders");
+// Sử dụng restaurantId từ file config để tạo tên collection động
+const menuCollection = collection(db, `${restaurantId}-menu`);
+const categoriesCollection = collection(db, `${restaurantId}-categories`);
+const ordersCollection = collection(db, `${restaurantId}-orders`);
 
 // --- DOM Elements ---
 const soundModal = document.getElementById('sound-modal');
@@ -281,7 +283,7 @@ categoryManagementList.addEventListener('click', async (e) => {
     }
     if (confirm(`Bạn có chắc muốn xóa phân loại "${categoryName}"?`)) {
         try {
-            await deleteDoc(doc(db, "quan-anh-beo-categories", categoryId));
+            await deleteDoc(doc(db, `${restaurantId}-categories`, categoryId));
         } catch (error) {
             console.error("Lỗi khi xóa phân loại: ", error);
             alert("Không thể xóa phân loại.");
@@ -323,7 +325,7 @@ productForm.addEventListener('submit', async (e) => {
     }
     try {
         if (id) {
-            await updateDoc(doc(db, "quan-anh-beo-menu", id), productData);
+            await updateDoc(doc(db, `${restaurantId}-menu`, id), productData);
         } else {
             await addDoc(menuCollection, productData);
         }
@@ -339,7 +341,7 @@ productListDiv.addEventListener('click', async (e) => {
     const target = e.target.closest('button');
     if (!target) return;
     const id = target.dataset.id;
-    const productDocRef = doc(db, "quan-anh-beo-menu", id);
+    const productDocRef = doc(db, `${restaurantId}-menu`, id);
     if (target.classList.contains('delete-btn')) {
         if (confirm('Bạn có chắc muốn xóa món ăn này?')) {
             await deleteDoc(productDocRef).catch(console.error);

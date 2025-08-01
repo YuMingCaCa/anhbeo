@@ -1,11 +1,12 @@
 // Import Firebase functions
 import { db } from './firebase.js';
 import { collection, onSnapshot, addDoc, serverTimestamp, query } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+import { restaurantId, restaurantName } from './config.js';
 
 // Collection references
-const menuCollection = collection(db, "quan-anh-beo-menu");
-const categoriesCollection = collection(db, "quan-anh-beo-categories");
-const ordersCollection = collection(db, "quan-anh-beo-orders");
+const menuCollection = collection(db, `${restaurantId}-menu`);
+const categoriesCollection = collection(db, `${restaurantId}-categories`);
+const ordersCollection = collection(db, `${restaurantId}-orders`);
 
 // State variables
 let menuData = [];
@@ -206,6 +207,10 @@ closeModalBtn.addEventListener('click', resetOrder);
 
 const init = () => {
     tableNumberSpan.textContent = getTableNumber();
+    // Set restaurant name from config
+    document.title = `Thực Đơn - ${restaurantName}`;
+    const restaurantNameHeader = document.getElementById('restaurant-name-header');
+    if (restaurantNameHeader) restaurantNameHeader.textContent = restaurantName;
     
     // Listen for real-time updates on categories
     onSnapshot(query(categoriesCollection), (snapshot) => {
