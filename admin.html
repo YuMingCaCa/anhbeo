@@ -74,9 +74,9 @@
             
             <div>
                 <h2 class="text-2xl font-bold mb-4">Danh Sách Món Ăn Hiện Tại</h2>
-                <div id="product-list" class="space-y-6">
-                    <p id="loading-products" class="text-center text-gray-500">Đang tải danh sách món ăn...</p>
-                </div>
+                <!-- Di chuyển dòng loading ra ngoài và để div product-list trống -->
+                <p id="loading-products" class="text-center text-gray-500 py-4">Đang tải danh sách món ăn...</p>
+                <div id="product-list" class="space-y-6"></div>
             </div>
         </div>
     </div>
@@ -120,6 +120,7 @@
         const cancelEditBtn = document.getElementById('cancel-edit-btn');
 
         let allProducts = [];
+        let allCategories = []; // Thêm biến để lưu trữ danh sách phân loại
 
         // ==================================================================
         // === BỘ MÁY GIỌNG NÓI TIẾNG VIỆT (VIETNAMESE VOICE ENGINE) V3.0 ===
@@ -267,7 +268,10 @@
         };
 
         const startDataListeners = () => {
-            onSnapshot(query(categoriesCollection), (snapshot) => renderCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))), console.error);
+            onSnapshot(query(categoriesCollection), (snapshot) => {
+                allCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderCategories(allCategories);
+            }, console.error);
             onSnapshot(query(menuCollection), (snapshot) => {
                 allProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderProducts(allProducts);
@@ -289,29 +293,33 @@
             });
         };
 
-        const unlockAudioAndStart = () => {
+        const startApp = () => {
+            // 1. Kích hoạt các tính năng media (âm thanh, giọng nói)
             voiceEngine.initialize(); // Khởi tạo bộ máy giọng nói
             notificationSound.play().then(() => {
                 notificationSound.pause();
                 notificationSound.currentTime = 0;
             }).catch(error => {});
+ 
+            // 2. Ẩn modal và hiện nội dung chính
+            soundModal.classList.add('hidden');
+            mainContainer.classList.remove('hidden');
+ 
+            // 3. Bắt đầu tải dữ liệu và lắng nghe các sự kiện
             startDataListeners();
             startNotificationListener();
-            mainContainer.classList.remove('hidden');
-            soundModal.classList.add('hidden');
         };
-
-        enableSoundBtn.addEventListener('click', unlockAudioAndStart);
-
-        // Các event handler khác giữ nguyên
+ 
+        // Gán sự kiện cho nút kích hoạt âm thanh
+        enableSoundBtn.addEventListener('click', startApp);
+ 
         addCategoryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const newCategoryNameInput = document.getElementById('new-category-name');
             const categoryName = normalizeCategory(newCategoryNameInput.value);
             if (!categoryName) return;
-            const q = query(categoriesCollection, where("name", "==", categoryName));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
+            // Tối ưu: Kiểm tra trên mảng đã có sẵn thay vì truy vấn DB
+            if (allCategories.some(cat => cat.name === categoryName)) {
                 alert('Phân loại này đã tồn tại!');
                 return;
             }
@@ -371,9 +379,9 @@
                     await deleteDoc(doc(db, "quan-anh-beo-menu", id));
                 }
             } else if (target.classList.contains('edit-btn')) {
-                const docSnap = await getDocs(query(menuCollection, where('__name__', '==', id)));
-                if (!docSnap.empty) {
-                    const product = docSnap.docs[0].data();
+                // Tối ưu: Tìm sản phẩm trong mảng `allProducts` thay vì đọc lại từ DB
+                const product = allProducts.find(p => p.id === id);
+                if (product) {
                     document.getElementById('product-id').value = id;
                     document.getElementById('product-name').value = product.name;
                     document.getElementById('product-price').value = product.price;
@@ -387,6 +395,7 @@
             }
         });
         cancelEditBtn.addEventListener('click', resetProductForm);
+ 
     </script>
 </body>
 </html>
